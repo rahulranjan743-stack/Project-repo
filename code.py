@@ -1,425 +1,294 @@
-import csv
 import os
+import json
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
-# Core runtime heap space
-students = []
-FILE_NAME = "students.csv"
-
-
-def calculate_grade(cgpa):
-    """Evaluates strict academic tier letter matching
-    using clean boundary constraints."""
-    
-    if cgpa >= 9.0:
-        return "A+"
-    elif cgpa >= 8.0:
-        return "A"
-    elif cgpa >= 7.0:
-        return "B"
-    elif cgpa >= 6.0:
-        return "C"
-
-    return "D"
-
-
-def calculate_eco_score(transport_mode):
-    """Maps transport modes to specific corporate
-    sustainability points."""
-    
-    scores = {
-        "walking": 1,
-        "bus": 3,
-        "bike": 6,
-        "car": 10
-    }
-
-    return scores.get(transport_mode.lower(), 5)
-
-
-def calculate_fees(transport_mode):
-    """Calculates final fee margins factoring in
-    carbon footprints."""
-
-    base_tuition = 300000
-
-    # Apply standard zero/low-carbon footprint
-    # model scholarship reduction
-
-    eco_scholarship = (
-        3000
-        if calculate_eco_score(transport_mode) <= 3
-        else 0
-    )
-
-    return base_tuition - eco_scholarship
+students = {}
 
 
 def register_student():
-    """Validates inputs and records a student profile
-    to runtime memory."""
+    usn = input("Enter USN: ")
+    name = input("Enter Student Name: ")
+    age = int(input("Enter Age: "))
 
-    print("\n--- Student Registration Pipeline ---")
-
-    sid = input("ID: ").strip()
-
-    # Prevents primary identifier collision
-    if any(s['ID'] == sid for s in students):
-        print("Error: Student ID already exists in system memory.")
-        return
-
-    name = input("Name: ").strip()
-    dept = input("Department: ").strip()
-    sem = input("Semester: ").strip()
-
-    try:
-        cgpa = float(input("CGPA: "))
-
-        if not (0.0 <= cgpa <= 10.0):
-            print(
-                "Invalid range constraint: "
-                "CGPA must be inside 0.0 - 10.0 scale."
-            )
-            return
-
-    except ValueError:
-        print(
-            "Type Exception: Numeric float scale "
-            "expected for CGPA."
-        )
-        return
-
-    transport = input(
-        "Transport (walking/bus/bike/car): "
-    ).strip().lower()
-
-    courses_input = input(
-        "Courses (comma-separated): "
-    )
-
-    courses = [
-        c.strip()
-        for c in courses_input.split(",")
-        if c.strip()
-    ]
-
-    student_data = {
-        "ID": sid,
+    students[usn] = {
         "Name": name,
-        "Department": dept,
-        "Semester": sem,
-        "CGPA": cgpa,
-        "Grade": calculate_grade(cgpa),
-        "Transport": transport.capitalize(),
-        "EcoScore": calculate_eco_score(transport),
-        "Fee": calculate_fees(transport),
-        "Courses": ", ".join(courses)
+        "Age": age,
+        "Courses": [],
+        "Marks": [],
+        "Fee": 0
     }
 
-    students.append(student_data)
-
-    print(
-        f"System: Registration complete for "
-        f"student '{name}'."
-    )
+    print("Student Registered Successfully")
 
 
-def save_records():
-    """Safely commits runtime state arrays onto flat
-    CSV databases."""
+def enroll_course():
+    usn = input("Enter USN: ")
 
+    if usn in students:
+        n = int(input("How many courses? "))
+
+        for i in range(n):
+            course = input("Enter Course Name: ")
+            students[usn]["Courses"].append(course)
+
+        print("Courses Added Successfully")
+    else:
+        print("Student Not Found")
+
+
+def evaluate_grade():
+    usn = input("Enter USN: ")
+
+    if usn in students:
+        n = int(input("Enter number of subjects: "))
+        marks = []
+
+        for i in range(n):
+            m = int(input(f"Enter marks for Subject {i+1}: "))
+            marks.append(m)
+
+        students[usn]["Marks"] = marks
+
+        avg = sum(marks) / len(marks)
+
+        if avg >= 90:
+            grade = "A+"
+        elif avg >= 75:
+            grade = "A"
+        elif avg >= 60:
+            grade = "B"
+        elif avg >= 50:
+            grade = "C"
+        else:
+            grade = "F"
+
+        print("Average Marks:", avg)
+        print("Grade:", grade)
+    else:
+        print("Student Not Found")
+
+
+def calculate_fee(course_count):
+    fee_per_course = 5000
+    return course_count * fee_per_course
+
+
+def assign_fee():
+    usn = input("Enter USN: ")
+
+    if usn in students:
+        count = len(students[usn]["Courses"])
+        total_fee = calculate_fee(count)
+
+        students[usn]["Fee"] = total_fee
+
+        print("Total Fee =", total_fee)
+    else:
+        print("Student Not Found")
+
+
+def display_students():
     if not students:
-        print(
-            "Warning: Memory buffer is empty. "
-            "Registers are clear."
-        )
+        print("No Records Found")
         return
 
-    try:
-        fieldnames = [
-            "ID",
-            "Name",
-            "Department",
-            "Semester",
-            "CGPA",
-            "Grade",
-            "Transport",
-            "EcoScore",
-            "Fee",
-            "Courses"
-        ]
-
-        with open(
-            FILE_NAME,
-            "w",
-            newline="",
-            encoding="utf-8"
-        ) as f:
-
-            writer = csv.DictWriter(
-                f,
-                fieldnames=fieldnames
-            )
-
-            writer.writeheader()
-            writer.writerows(students)
-
-        print(
-            f"Success: Persistent data written "
-            f"to file system space: '{FILE_NAME}'."
-        )
-
-    except IOError as e:
-        print(
-            f"I/O Storage Error: Failed to "
-            f"execute system write: {e}"
-        )
-
-
-def load_records():
-    """Automatically loads saved student files
-    during initialization."""
-
-    global students
-
-    if os.path.exists(FILE_NAME):
-        try:
-            with open(
-                FILE_NAME,
-                "r",
-                encoding="utf-8"
-            ) as f:
-
-                reader = csv.DictReader(f)
-
-                students = []
-
-                for row in reader:
-                    row["CGPA"] = float(row["CGPA"])
-                    row["EcoScore"] = int(row["EcoScore"])
-                    students.append(row)
-
-            print(
-                f"Bootloader: Automated restoration "
-                f"of {len(students)} records."
-            )
-
-        except Exception as e:
-            print(
-                f"Bootloader Exception: Failed "
-                f"to decode repository: {e}"
-            )
+    for usn, data in students.items():
+        print("\nUSN:", usn)
+        print("Name:", data["Name"])
+        print("Age:", data["Age"])
+        print("Courses:", data["Courses"])
+        print("Marks:", data["Marks"])
+        print("Fee:", data["Fee"])
 
 
 def search_student():
-    """Performs quick linear lookup operations via
-    distinct primary keys."""
+    key = input("Enter USN to Search: ")
 
-    sid = input("Enter ID: ").strip()
+    if key in students:
+        print(students[key])
+    else:
+        print("Student Not Found")
 
-    for s in students:
-        if s["ID"] == sid:
 
-            print("\n--- Structural Record Found ---")
-
-            for key, val in s.items():
-                print(f"{key:<12}: {val}")
-
-            return
-
-    print(
-        "System Lookup: Specified reference "
-        "identifier could not be matched."
+def sort_students():
+    sorted_data = sorted(
+        students.items(),
+        key=lambda x: x[1]["Name"]
     )
 
+    print("\nStudents Sorted by Name")
 
-def sort_students_by_cgpa():
-    """Orders students by highest academic
-    performance indices."""
+    for usn, data in sorted_data:
+        print(usn, data["Name"])
 
-    if not students:
-        print(
-            "Data Error: Memory matrix contains "
-            "zero instances to organize."
-        )
-        return
 
-    sorted_set = sorted(
-        students,
-        key=lambda x: x["CGPA"],
-        reverse=True
-    )
+def save_records():
+    with open("students.json", "w") as file:
+        json.dump(students, file)
 
-    print(
-        "\n--- Academic Merit Indexing "
-        "(Descending Rank) ---"
-    )
+    print("Records Saved to File")
 
-    for item in sorted_set:
-        print(
-            f"{item['Name']:<20} | "
-            f"CGPA: {item['CGPA']:.2f} "
-            f"[{item['Grade']}]"
-        )
+
+def load_records():
+    global students
+
+    try:
+        with open("students.json", "r") as file:
+            students = json.load(file)
+
+        print("Records Loaded Successfully")
+
+    except FileNotFoundError:
+        print("File Not Found")
 
 
 def scan_directory():
-    """Safely inspects project directory structures,
-    catching authorization anomalies."""
-
-    folder = input("Folder name: ").strip()
+    path = input("Enter Directory Path: ")
 
     try:
-        files = os.listdir(folder)
+        files = os.listdir(path)
 
-        print(
-            f"\nWorkspace Structure for "
-            f"'{folder}':"
-        )
+        print("Files in Directory:")
 
-        for file in files:
-            print(f"-> {file}")
+        for f in files:
+            print(f)
 
     except FileNotFoundError:
-        print(
-            "Runtime Error: Target file path "
-            "directory does not exist."
-        )
+        print("Directory Not Found")
 
     except PermissionError:
-        print(
-            "Security Error: Insufficient "
-            "privilege access for path execution."
-        )
-
-    except Exception as e:
-        print(
-            f"System Exception: Directory "
-            f"resolution failure: {e}"
-        )
+        print("Permission Denied")
 
 
-def generate_analytics():
-    """Leverages NumPy and Pandas arrays to output
-    system metric distributions."""
-
-    if (
-        not os.path.exists(FILE_NAME)
-        or os.stat(FILE_NAME).st_size == 0
-    ):
-        print(
-            "Analytics Flag: File stream "
-            "uninitialized. Please save records first."
-        )
+def analytics():
+    if not students:
+        print("No Data Available")
         return
 
-    try:
-        df = pd.read_csv(FILE_NAME)
+    rows = []
 
+    for usn, data in students.items():
+        marks = data.get("Marks", []) or []
+
+        if marks:
+            avg = float(np.mean(marks))
+            count = len(marks)
+        else:
+            avg = 0.0
+            count = 0
+
+        rows.append({
+            "USN": usn,
+            "Student": data.get("Name", ""),
+            "Average": avg,
+            "MarksCount": count
+        })
+
+    df = pd.DataFrame(rows)
+
+    print("\nStudent Performance Data (all students)")
+    print(df[["USN", "Student", "MarksCount", "Average"]])
+
+    if df["MarksCount"].sum() > 0:
+        class_avg = df[df["MarksCount"] > 0]["Average"].mean()
+        median = df[df["MarksCount"] > 0]["Average"].median()
+
+        top = df[df["MarksCount"] > 0].sort_values(
+            "Average",
+            ascending=False
+        ).head(1)
+
+        bottom = df[df["MarksCount"] > 0].sort_values(
+            "Average"
+        ).head(1)
+
+        print(f"\nClass Average (students with marks): {class_avg:.2f}")
+        print(f"Median Average: {median:.2f}")
         print(
-            "\n--- Structural Frame Ingest "
-            "(Pandas Matrix Data) ---"
+            "Top Student:",
+            top[["Student", "Average"]].to_dict("records")
         )
-
-        print(df.to_string(index=False))
-
-        avg_cgpa = np.mean(df["CGPA"])
-
         print(
-            f"Calculated Average Institutional "
-            f"CGPA Matrix: {avg_cgpa:.2f}"
+            "Bottom Student:",
+            bottom[["Student", "Average"]].to_dict("records")
         )
 
-        plt.figure(figsize=(6, 4))
+    else:
+        print("\nNo marks entered for any student. Averages shown as 0.0")
 
-        plt.hist(
-            df["CGPA"],
-            bins=5,
-            color="teal",
-            edgecolor="black",
-            alpha=0.7
-        )
-
-        plt.xlabel("CGPA Value Range")
-        plt.ylabel("Frequency Headcount")
-        plt.title(
-            "Academic Performance Threshold Distribution"
-        )
-
-        plt.grid(
-            axis="y",
-            linestyle="--",
-            alpha=0.5
-        )
-
-        plt.tight_layout()
-        plt.show()
-
-    except Exception as e:
-        print(
-            f"Scientific Stack Core Exception: "
-            f"Analytical crash: {e}"
-        )
+    plt.figure(figsize=(10, 6))
+    plt.bar(df["Student"], df["Average"], color="skyblue")
+    plt.xlabel("Students")
+    plt.ylabel("Average Marks")
+    plt.title("Student Performance Analysis (All Students)")
+    plt.xticks(rotation=45, ha="right")
+    plt.tight_layout()
+    plt.show()
 
 
 def main():
-    load_records()
-
     while True:
-        print("\n" + "=" * 45)
-        print(
-            "SMART CAMPUS COMPREHENSIVE "
-            "CONTROL DASHBOARD"
-        )
-        print("=" * 45)
+        print("\n===== SMART CAMPUS INFORMATION SYSTEM =====")
+        print("1. Register Student")
+        print("2. Enroll Course")
+        print("3. Grade Evaluation")
+        print("4. Fee Calculation")
+        print("5. Display Students")
+        print("6. Search Student")
+        print("7. Sort Students")
+        print("8. Save Records")
+        print("9. Load Records")
+        print("10. Scan Directory")
+        print("11. Student Analytics")
+        print("12. Exit")
 
-        print("1. Register Academic Student Instance")
-        print("2. Commit Memory States to Disk Database (CSV)")
-        print("3. Match and Retrieve Profile via Unique Key")
-        print("4. Reorder Performance Tables via CGPA Rank")
-        print("5. Verify Workspace Directories & Safety Scan")
-        print("6. Run Numerical Analysis and Distribution Charts")
-        print("7. Shutdown Administrative Console Interface")
+        try:
+            choice = int(input("Enter Choice: "))
+        except ValueError:
+            print("Please enter a valid number.")
+            continue
 
-        print("=" * 45)
-
-        ch = input(
-            "System Input Choice: "
-        ).strip()
-
-        if ch == "1":
+        if choice == 1:
             register_student()
 
-        elif ch == "2":
-            save_records()
+        elif choice == 2:
+            enroll_course()
 
-        elif ch == "3":
+        elif choice == 3:
+            evaluate_grade()
+
+        elif choice == 4:
+            assign_fee()
+
+        elif choice == 5:
+            display_students()
+
+        elif choice == 6:
             search_student()
 
-        elif ch == "4":
-            sort_students_by_cgpa()
+        elif choice == 7:
+            sort_students()
 
-        elif ch == "5":
+        elif choice == 8:
+            save_records()
+
+        elif choice == 9:
+            load_records()
+
+        elif choice == 10:
             scan_directory()
 
-        elif ch == "6":
-            generate_analytics()
+        elif choice == 11:
+            analytics()
 
-        elif ch == "7":
-            print(
-                "Console shut down gracefully.\n"
-                "Process terminated."
-            )
+        elif choice == 12:
+            print("Exiting Program")
             break
 
         else:
-            print(
-                "Validation Flag: Invalid command "
-                "string code identifier entered."
-            )
+            print("Invalid Choice")
 
 
-if __name__ == "__main__":
-    main()
+main()
